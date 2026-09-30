@@ -1,6 +1,6 @@
 {
   "name": "takealot-extension",
-  "version": "0.1.0+codex.20260930095931",
+  "version": "0.1.0+codex.20260930100205",
   "description": "Unofficial Takealot product search extension for Codex.",
   "author": {
     "name": "Tanaka Mambinge",
@@ -19,7 +19,8 @@
       "Interactive"
     ],
     "defaultPrompt": [
-      "Search Takealot for wireless headphones"
+      "Find wireless headphones on Takealot",
+      "Build a complete starter sim racing setup; find everything I need to get started"
     ],
     "composerIcon": "./assets/takealot-icon.png",
     "logo": "./assets/takealot-wordmark.svg"

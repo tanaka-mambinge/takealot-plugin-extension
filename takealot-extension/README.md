@@ -11,6 +11,11 @@ An unofficial Codex extension that searches Takealot's product catalogue through
 
 The panel shows catalogue data returned by Takealot, including product images, price, rating, and availability when supplied. Product images load from Takealot's media host. Clicking a card opens its Takealot URL; it does not trigger another product request.
 
+## Example searches
+
+- **One product:** “Find wireless headphones on Takealot.” Codex searches once and shows matching listings.
+- **A full setup:** “Build a complete starter sim racing setup; find everything I need to get started.” Codex searches for each component type and groups the results so you can choose the wheel, pedals, cockpit or seat, and other useful gear.
+
 ## Test locally
 
 Requirements: Node.js 22 or newer and pnpm. Installing packages downloads dependencies.
