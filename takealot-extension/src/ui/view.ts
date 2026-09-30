@@ -191,7 +191,7 @@ function createWishlistDialog(product: Product, actions: PanelActions): HTMLDial
       input.maxLength = 100;
       input.required = true;
       input.autocomplete = "off";
-      input.placeholder = "For example, Sim racing setup";
+      input.placeholder = "For example, a budget YouTube studio";
       const submit = makeElement("button", "wishlist-confirm", "Create and add product");
       submit.type = "submit";
       form.append(label, input, submit);

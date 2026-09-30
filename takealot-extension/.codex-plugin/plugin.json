@@ -20,7 +20,9 @@
     ],
     "defaultPrompt": [
       "Find wireless headphones on Takealot",
-      "Build a complete starter sim racing setup; find everything I need to get started"
+      "Build a budget home YouTube studio setup with a microphone, camera, lighting, and green screen",
+      "Compare three wireless headphones on Takealot. I want something durable, so use customer reviews to assess build quality and long-term reliability",
+      "Show me my Takealot wishlist groups and what's in each, then create a wishlist called Desk setup"
     ],
     "composerIcon": "./assets/takealot-icon.png",
     "logo": "./assets/takealot-wordmark.svg"

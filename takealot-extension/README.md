@@ -20,10 +20,12 @@ Takealot's customer/mobile API is undocumented and may change. The extension is 
 
 The panel shows catalogue data returned by Takealot, including product images, price, rating, and availability when supplied. Product images load from image URLs in Takealot's search response. Review summaries are based on MCP-fetched Takealot review samples. Clicking a card opens its Takealot URL; it does not trigger another product request.
 
-## Example searches
+## Example prompts
 
 - **One product:** “Find wireless headphones on Takealot.” Codex searches once and shows matching listings.
-- **A full setup:** “Build a complete starter sim racing setup; find everything I need to get started.” Codex searches for each component type and groups the results so you can choose the wheel, pedals, cockpit or seat, and other useful gear.
+- **A full setup:** “Build a budget home YouTube studio setup with a microphone, camera, lighting, and green screen.” Codex searches for each component type and groups the results so you can choose a setup within your budget.
+- **Compare products:** “Compare three wireless headphones on Takealot. I want something durable, so use customer reviews to assess build quality and long-term reliability.” Codex compares listing details and relevant customer reviews.
+- **Organize wishlists:** “Show me my Takealot wishlist groups and what's in each, then create a wishlist called Desk setup.” Codex lists your groups and their contents, then creates the requested group.
 
 ## Test locally
 
