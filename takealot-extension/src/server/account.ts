@@ -243,15 +243,20 @@ export class TakealotAccountClient {
     return { deleted: true, groupId: id };
   }
 
-  async addProduct(groupId: string, reference: string): Promise<{ added: true; groupId: string; title: string; plid: string }> {
+  async addProduct(groupId: string, reference: string, searchedProduct?: { productId?: number; title?: string }): Promise<{ added: true; groupId: string; title: string; plid: string }> {
     const id = this.requireGroupId(groupId);
     const plid = parseProductPLID(reference);
-    const details = await this.request("GET", `/product-details/PLID${plid}?platform=android&show_takealot_now_alt=false&offer_opt=true`);
-    const buybox = asMap(details.body.buybox);
-    const selected = asMap(asArray(buybox.items ?? buybox.buybox_items).find((item) => asMap(item).is_selected) ?? asArray(buybox.items ?? buybox.buybox_items)[0]);
-    const productId = num(buybox.product_id) ?? num(selected.product_id) ?? num(buybox.id);
+    let details: HttpResult | undefined;
+    let productId = num(searchedProduct?.productId);
+    if (!productId) {
+      details = await this.request("GET", `/product-details/PLID${plid}?platform=android&show_takealot_now_alt=false&offer_opt=true`);
+      const buybox = asMap(details.body.buybox);
+      const items = asArray(buybox.items ?? buybox.buybox_items);
+      const selected = asMap(items.find((item) => asMap(item).is_selected) ?? items[0]);
+      productId = num(buybox.product_id) ?? num(selected.product_id) ?? num(buybox.id);
+    }
     if (!productId) throw new Error("Takealot did not provide the product ID needed to add this listing to a wishlist.");
-    const productTitle = str(details.body.title, asMap(details.body.core).title) || `PLID${plid}`;
+    const productTitle = str(searchedProduct?.title, details?.body.title, asMap(details?.body.core).title) || `PLID${plid}`;
     const session = await this.requireSession();
     await this.authenticated("PUT", `/customers/${encodeURIComponent(session.customerId)}/wishlists/items/pid/${productId}`, { reset: false, groups: [Number(id)] });
     return { added: true, groupId: id, title: productTitle, plid };

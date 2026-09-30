@@ -29,7 +29,7 @@ const account = new TakealotAccountClient(new SystemSessionStore());
 const loginFlow = new LocalLoginFlow(account);
 type SearchProduct = NonNullable<Awaited<ReturnType<typeof searchTakealot>>["results"][number]>;
 const searchedProducts = new SearchProductCache<SearchProduct>();
-registerAccountTools(server, account, loginFlow);
+registerAccountTools(server, account, loginFlow, searchedProducts);
 const panelUri = "ui://takealot-extension/product-results";
 const panelFile = resolve(dirname(fileURLToPath(import.meta.url)), "../ui/index.html");
 const imageDomains = ["https://media.takealot.com", "https://static.takealot.com", "https://images.takealot.com"];
@@ -42,6 +42,7 @@ const resourceMetadata = {
     csp: {
       resourceDomains: imageDomains,
     },
+    permissions: { clipboardWrite: {} },
   },
   "openai/ui": {
     preferredDisplayMode: "fullscreen",
@@ -53,7 +54,7 @@ registerAppResource(
   server,
   "Takealot product results",
   panelUri,
-  { _meta: { ui: { csp: { resourceDomains: imageDomains } } } },
+  { _meta: { ui: { csp: { resourceDomains: imageDomains }, permissions: { clipboardWrite: {} } } } },
   async () => ({
     contents: [
       {
@@ -148,6 +149,30 @@ registerAppTool(
       structuredContent: result,
     };
   },
+);
+
+const showLogoutToolConfig = {
+  title: "Sign out of Takealot",
+  description: "Open the Takealot sign-out panel. The user copies a short-lived local link and opens it in a browser to remove the saved session from this computer.",
+  inputSchema: {},
+  annotations: { readOnlyHint: false, openWorldHint: false },
+  icons: [{ src: entrypointIcon, mimeType: "image/svg+xml", sizes: ["20x20"] }],
+  _meta: {
+    ui: { resourceUri: panelUri },
+    "openai/ui": {
+      entrypoints: [{ type: "thread" }],
+    } satisfies OpenAIUiToolMetadata,
+  },
+};
+
+registerAppTool(
+  server,
+  "takealot.show_logout",
+  showLogoutToolConfig,
+  async () => ({
+    content: [{ type: "text", text: "Takealot sign-out panel opened. Copy the temporary link and open it in your browser to remove the saved session." }],
+    structuredContent: { mode: "logout" },
+  }),
 );
 
 await server.connect(new StdioServerTransport());

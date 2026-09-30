@@ -2,6 +2,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { TakealotAccountClient } from "./account.ts";
 import type { LocalLoginFlow } from "./login-flow.ts";
+import type { SearchProductCache } from "./product-cache.ts";
+
+type SearchProduct = { plid?: string; url: string; title?: string; productId?: number; imageUrls?: string[] };
 
 function result(value: Record<string, unknown>, message: string) {
   return { content: [{ type: "text" as const, text: message }], structuredContent: value };
@@ -11,7 +14,7 @@ function failure(error: unknown) {
   return { isError: true as const, content: [{ type: "text" as const, text: error instanceof Error ? error.message : "The Takealot request failed." }] };
 }
 
-export function registerAccountTools(server: McpServer, api: TakealotAccountClient, loginFlow: LocalLoginFlow): void {
+export function registerAccountTools(server: McpServer, api: TakealotAccountClient, loginFlow: LocalLoginFlow, searchedProducts: SearchProductCache<SearchProduct>): void {
   server.registerTool("takealot.auth_status", {
     title: "Check Takealot sign-in",
     description: "Check whether a Takealot session is saved in this computer's password vault. Does not return any account identifiers or credentials.",
@@ -36,14 +39,16 @@ export function registerAccountTools(server: McpServer, api: TakealotAccountClie
     } catch (error) { return failure(error); }
   });
 
-  server.registerTool("takealot.auth_logout", {
-    title: "Sign out of Takealot",
-    description: "Remove the saved Takealot session from this computer's password vault.",
+  server.registerTool("takealot.auth_start_logout", {
+    title: "Prepare a Takealot sign-out link",
+    description: "Start the local browser flow used by the sign-out panel. Do not call this directly for user requests; open takealot.show_logout so the user can copy the link.",
     inputSchema: {},
     annotations: { readOnlyHint: false, openWorldHint: false },
   }, async () => {
-    try { return result(await api.logout(), "The saved Takealot session was removed."); }
-    catch (error) { return failure(error); }
+    try {
+      const value = await loginFlow.startLogout();
+      return result(value, "A temporary sign-out link is ready in the Takealot panel.");
+    } catch (error) { return failure(error); }
   });
 
   server.registerTool("takealot.wishlist_list", {
@@ -98,14 +103,14 @@ export function registerAccountTools(server: McpServer, api: TakealotAccountClie
 
   server.registerTool("takealot.wishlist_add", {
     title: "Add a product to a Takealot wishlist",
-    description: "Add one Takealot listing to a wishlist group. For agent-initiated actions, confirm the product and target group with the user first. The results-panel button is the user's confirmation for that product and group. Requires local sign-in.",
+    description: "Add one Takealot listing to a wishlist group only in response to the user's explicit request. Reuse the product and group identified in the conversation; ask only if either is ambiguous. The results-panel button also authorizes the selected product and group. Requires local sign-in.",
     inputSchema: {
       groupId: z.string().regex(/^\d+$/).describe("Numeric wishlist group ID."),
       productUrl: z.string().url().describe("Canonical Takealot product URL from search results."),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, async ({ groupId, productUrl }) => {
-    try { const value = await api.addProduct(groupId, productUrl); return result(value, `Added “${value.title}” to wishlist group ${value.groupId}.`); }
+    try { const cached = searchedProducts.find(productUrl); const value = await api.addProduct(groupId, productUrl, cached); return result(value, `Added “${value.title}” to wishlist group ${value.groupId}.`); }
     catch (error) { return failure(error); }
   });
 

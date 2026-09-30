@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.server.json --noEmit && esbuild src/server/index.ts --bundle --platform=node --target=node22 --format=esm --loader:.svg=text --outfile=dist/server/index.js",
+    "build": "vite build && tsc -p tsconfig.server.json --noEmit && esbuild src/server/index.ts --bundle --platform=node --target=node22 --format=esm --loader:.svg=text --outfile=dist/server/index.js && mkdir -p dist/server/assets && cp src/server/assets/takealot-wordmark.svg dist/server/assets/takealot-wordmark.svg",
     "test": "node --experimental-strip-types --test src/server/*.test.ts"
   },
   "dependencies": {

@@ -31,10 +31,12 @@ If search returns no matches, say so and suggest trying a shorter or different p
 
 ## Sign-in and wishlists
 
-- Check `takealot.auth_status` before an account operation. If the user is not connected, call `takealot.auth_start_login` and give them its temporary local link. They enter their password and any one-time code there. Never request credentials in chat or pass them as MCP arguments.
-- The local MCP server stores the session only in the computer's OS password vault. Do not expose session tokens, cookies, or customer identifiers in chat or tool output. `takealot.auth_logout` removes the saved session.
+- Check `takealot.auth_status` before an account operation. If the user is not connected, use the panel's Add to wishlist sign-in flow; the user copies the temporary local link and completes sign-in in their browser. Never request credentials in chat or pass them as MCP arguments.
+- When the user asks to sign out, call `takealot.show_logout` to open the sign-out panel. Do not call the local deletion tool directly. The panel creates a short-lived loopback link; the user copies it and opens it in a browser, and that browser visit deletes the saved session from this computer. The panel reports when sign-out finishes.
+- The local MCP server stores the session only in the computer's OS password vault. Do not expose session tokens, cookies, customer identifiers, or temporary sign-in/sign-out links in chat or tool output. `takealot.auth_start_logout` is for the sign-out panel only.
 - Use `takealot.wishlist_list` to find group IDs and `takealot.wishlist_items` to view group contents. Use the create, rename, delete, add, and remove tools only when the user asks.
-- Before agent-initiated changes, state the exact target and ask for confirmation. The panel's **Add to wishlist** flow is itself the user's confirmation for the chosen product and group.
+- When the user explicitly asks to add a product to a wishlist, treat that request as authorization; do not ask for a redundant confirmation. Reuse product details from earlier in the conversation so the user does not need to scroll or repeat them. Use the named group or one selected earlier in the conversation. If no group is known, list the user's groups: use the only group when there is exactly one, ask which one when there are multiple, or offer to create one when there are none. If the product is ambiguous, ask only which product they mean. For multiple clearly identified products, add each one as requested.
+- The panel's **Add to wishlist** flow is also the user's authorization for its selected product and group. Do not modify a wishlist as a side effect of research or recommendations.
 - `takealot.wishlist_remove` removes the product from every wishlist group. State this clearly and get confirmation first. Confirm before deleting a group as well.
 - Never modify a wishlist as a side effect of product research. Do not add to cart, check out, pay, place an order, or perform other account actions.
 - These wishlist routes use Takealot's undocumented mobile API. If sign-in or a wishlist action fails, report the error and stop; do not switch to web search, the CLI, or a different API.
@@ -42,5 +44,5 @@ If search returns no matches, say so and suggest trying a shorter or different p
 ## Wishlist examples
 
 - “Show my wishlists and the products saved in my Sim rig list.” List the groups, then fetch the selected group's items.
-- “Add this wheel to my Sim rig wishlist.” Confirm the exact product and group in chat before calling the add tool, unless the user uses the panel button and selects that group.
-- “Create a wishlist called Sim rig and add these products.” Confirm the group name and products before creating the group or adding the products.
+- “Add this wheel to my Sim rig wishlist.” Reuse the wheel identified earlier in the conversation and add it to the named wishlist without asking the user to repeat or reconfirm it.
+- “Create a wishlist called Sim rig and add these products.” Use the explicitly named wishlist and products. Ask only if the requested products cannot be identified clearly from the conversation.

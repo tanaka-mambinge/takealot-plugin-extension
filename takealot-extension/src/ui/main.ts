@@ -1,6 +1,6 @@
 import { App } from "@modelcontextprotocol/ext-apps";
 import "./style.css";
-import { renderInitial, renderSearchResult } from "./view.js";
+import { renderInitial, renderLogoutPanel, renderSearchResult } from "./view.js";
 
 const app = new App({ name: "Takealot product results", version: "0.1.0" });
 const root = document.querySelector<HTMLElement>("#app");
@@ -9,14 +9,19 @@ if (root) renderInitial(root);
 
 app.ontoolresult = (result) => {
   if (root) {
-    renderSearchResult(root, result.structuredContent, {
+    const actions = {
       openProduct: async (url) => {
         const response = await app.openLink({ url });
         if (response.isError) throw new Error("The host could not open the link.");
         return response;
       },
       callTool: (name, args = {}) => app.callServerTool({ name, arguments: args }),
-    });
+    };
+    if ((result.structuredContent as { mode?: string } | undefined)?.mode === "logout") {
+      renderLogoutPanel(root, actions);
+    } else {
+      renderSearchResult(root, result.structuredContent, actions);
+    }
   }
 };
 

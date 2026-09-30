@@ -47,6 +47,30 @@ test("keeps the product PLID separate from product_id when adding to a wishlist"
   assert.equal((write.init.headers as Record<string, string>).Authorization, "Bearer jwt-old");
 });
 
+test("uses the numeric product ID from cached search results without resolving product details again", async () => {
+  const store = new MemoryStore();
+  store.session = { ...originalSession };
+  const requests: string[] = [];
+  const api = new TakealotAccountClient(store, {
+    base: "https://api.takealot.com/rest/test",
+    fetcher: async (input, init = {}) => {
+      const url = new URL(input.toString());
+      requests.push(`${init.method ?? "GET"} ${url.pathname}`);
+      if (url.pathname.endsWith("/wishlists/items/pid/456")) return jsonResponse({ ok: true });
+      return jsonResponse({}, 404);
+    },
+  });
+
+  const result = await api.addProduct("7", "https://www.takealot.com/wheel/PLID123", {
+    productId: 456,
+    title: "Wheel",
+  });
+
+  assert.deepEqual(result, { added: true, groupId: "7", title: "Wheel", plid: "123" });
+  assert.equal(requests.some((request) => request.includes("/product-details/")), false);
+  assert.ok(requests.includes("PUT /rest/test/customers/42/wishlists/items/pid/456"));
+});
+
 test("refreshes once after an unauthorized wishlist request and replaces rotated tokens", async () => {
   const store = new MemoryStore();
   store.session = { ...originalSession };
@@ -117,7 +141,11 @@ test("runs sign-in and OTP through the temporary loopback page without exposing 
   assert.equal(formUrl.searchParams.has("password"), false);
   const firstPage = await fetch(url);
   assert.equal(firstPage.status, 200);
-  assert.match(await firstPage.text(), /Connect your Takealot account/);
+  const loginHtml = await firstPage.text();
+  assert.match(loginHtml, /Connect your Takealot account/);
+  assert.match(loginHtml, /alt="Takealot"/);
+  assert.match(loginHtml, /data:image\/svg\+xml;base64,/);
+  assert.match(firstPage.headers.get("content-security-policy") ?? "", /img-src data:/);
   const firstForm = new URLSearchParams({ email: "user@example.com", password: "secret-password" });
   const otpPage = await fetch(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: firstForm });
   assert.equal(otpPage.status, 200);
@@ -130,6 +158,30 @@ test("runs sign-in and OTP through the temporary loopback page without exposing 
   assert.match(seen[0]!.body, /secret-password/);
   assert.equal(seen[1]!.cookie, "__cf_bm=challenge");
   assert.equal((await store.load())?.jwt, "jwt-secret");
+});
+
+test("signs out and deletes the local session only when the temporary browser link is opened", async () => {
+  const store = new MemoryStore();
+  store.session = { ...originalSession };
+  const api = new TakealotAccountClient(store, { fetcher: async () => { throw new Error("Unexpected API request"); } });
+  const flow = new LocalLoginFlow(api);
+  const { url } = await flow.startLogout();
+  const logoutUrl = new URL(url);
+  assert.equal(logoutUrl.hostname, "127.0.0.1");
+  assert.equal(logoutUrl.pathname, "/takealot-extension-logout");
+  assert.ok(logoutUrl.searchParams.get("token"));
+  assert.ok(await store.load());
+
+  const invalidUrl = new URL(url);
+  invalidUrl.searchParams.set("token", "invalid-token");
+  const invalidResponse = await fetch(invalidUrl);
+  assert.equal(invalidResponse.status, 404);
+  assert.ok(await store.load());
+
+  const response = await fetch(url);
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /Signed out/);
+  assert.equal(await store.load(), undefined);
 });
 
 test("fails closed when the operating-system password vault is unavailable", async () => {

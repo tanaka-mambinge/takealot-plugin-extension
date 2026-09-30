@@ -32,6 +32,11 @@ export class SearchProductCache<T extends CachedProduct> {
     }
   }
 
+  find(reference: string): T | undefined {
+    const plid = plidFromProduct({ url: reference });
+    return plid ? this.products.get(plid) : undefined;
+  }
+
   hydrate<G extends { products: P[] }, P extends CachedProduct>(groups: G[] | undefined): G[] | undefined {
     return groups?.map((group) => ({
       ...group,

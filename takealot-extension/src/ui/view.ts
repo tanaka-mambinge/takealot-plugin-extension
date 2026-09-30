@@ -1,8 +1,10 @@
 import externalLinkIcon from "@tabler/icons/outline/external-link.svg?raw";
 import heartPlusIcon from "@tabler/icons/outline/heart-plus.svg?raw";
+import copyIcon from "@tabler/icons/outline/copy.svg?raw";
 import photoIcon from "@tabler/icons/outline/photo.svg?raw";
 import truckIcon from "@tabler/icons/outline/truck-delivery.svg?raw";
 import starIcon from "@tabler/icons/filled/star.svg?raw";
+import { copyText } from "./clipboard.js";
 
 type Product = {
   plid?: string;
@@ -226,29 +228,51 @@ function createWishlistDialog(product: Product, actions: PanelActions): HTMLDial
 
   const showSignIn = () => {
     content.replaceChildren();
-    const signIn = makeElement("button", "wishlist-confirm", "Sign in to Takealot");
-    signIn.type = "button";
-    let loginStarted = false;
+    const guide = makeElement("section", "wishlist-signin-card");
+    const title = makeElement("h3", undefined, "Sign in to continue");
+    const intro = makeElement("p", "wishlist-signin-intro", "Copy the link, open it in your browser, then return here. Your wishlists will load automatically.");
+    const urlLabel = makeElement("label", "wishlist-link-label", "Sign-in link");
+    const loginLink = makeElement("input", "wishlist-login-link");
+    loginLink.type = "text";
+    loginLink.readOnly = true;
+    loginLink.autocomplete = "off";
+    loginLink.setAttribute("aria-label", "Temporary sign-in link. Click to select, then copy and paste into your browser.");
+    const actionsRow = makeElement("div", "wishlist-login-actions");
+    const copyLink = makeElement("button", "wishlist-copy-link", "Copy link");
+    copyLink.type = "button";
+    copyLink.disabled = true;
+    copyLink.prepend(makeIcon(copyIcon, "icon-copy"));
+    const copyLabel = makeElement("span", undefined, "Copy link");
+    copyLink.append(copyLabel);
+    actionsRow.append(copyLink);
+    guide.append(title, intro, urlLabel, loginLink, actionsRow);
+    content.append(guide);
+
+    let monitoring = false;
+    let linkExpired = false;
+    let retryWishlistLoad = false;
     let loginUrl: string | undefined;
-    setStatus("We’ll open a secure Takealot sign-in page. Keep this panel open; your wishlists will appear here when you’re done.");
     const loadWishlists = async (): Promise<boolean> => {
       setStatus("Signed in. Loading your wishlists…");
-      const response = await actions.callTool("takealot.wishlist_list");
-      const error = toolError(response);
-      if (error) {
-        setStatus(error.message, true);
+      try {
+        const response = await actions.callTool("takealot.wishlist_list");
+        const error = toolError(response);
+        if (error) throw error;
+        const value = response.structuredContent as { groups?: Array<{ groupId: string; name: string; itemCount: number }> } | undefined;
+        showGroups(value?.groups ?? []);
+        setStatus("Choose where to save this product.");
+        return true;
+      } catch (error) {
+        retryWishlistLoad = true;
+        copyLabel.textContent = "Retry loading wishlists";
+        setStatus(error instanceof Error ? error.message : "Could not load wishlists.", true);
         return false;
       }
-      const value = response.structuredContent as { groups?: Array<{ groupId: string; name: string; itemCount: number }> } | undefined;
-      showGroups(value?.groups ?? []);
-      setStatus("Choose where to save this product.");
-      return true;
     };
-    const waitForSignIn = async () => {
+    const monitorSignIn = async () => {
+      if (monitoring || !dialog.open) return;
+      monitoring = true;
       const deadline = Date.now() + 5 * 60_000;
-      signIn.disabled = true;
-      signIn.textContent = "Checking sign-in…";
-      setStatus("Finish signing in in the browser tab. This panel will update automatically.");
       while (dialog.open && Date.now() < deadline) {
         try {
           const response = await actions.callTool("takealot.auth_status");
@@ -256,30 +280,26 @@ function createWishlistDialog(product: Product, actions: PanelActions): HTMLDial
           if (error) throw error;
           const value = response.structuredContent as { authenticated?: boolean } | undefined;
           if (value?.authenticated) {
-            const loaded = await loadWishlists();
-            if (!loaded && dialog.open) {
-              signIn.disabled = false;
-              signIn.textContent = "Retry loading wishlists";
-            }
+            monitoring = false;
+            await loadWishlists();
             return;
           }
         } catch (error) {
+          monitoring = false;
           setStatus(error instanceof Error ? error.message : "Could not check Takealot sign-in.", true);
-          signIn.disabled = false;
-          signIn.textContent = "Check sign-in again";
           return;
         }
         await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
+      monitoring = false;
       if (!dialog.open) return;
-      setStatus("Sign-in hasn’t been detected yet. Finish it in the browser, then choose Check sign-in again.");
-      signIn.disabled = false;
-      signIn.textContent = "Check sign-in again";
+      linkExpired = true;
+      copyLabel.textContent = "Copy a new sign-in link";
+      setStatus("The sign-in link expired. Copy a new one to try again.", true);
     };
-    const prepareSignIn = async () => {
-      signIn.disabled = true;
-      signIn.textContent = "Preparing sign-in…";
-      setStatus("Preparing your secure sign-in page…");
+    const prepareSignIn = async (copyWhenReady = false): Promise<void> => {
+      copyLink.disabled = true;
+      setStatus("Preparing your private sign-in link…");
       try {
         const response = await actions.callTool("takealot.auth_start_login");
         const error = toolError(response);
@@ -287,42 +307,43 @@ function createWishlistDialog(product: Product, actions: PanelActions): HTMLDial
         const value = response.structuredContent as { url?: string } | undefined;
         if (!value?.url) throw new Error("Could not prepare Takealot sign-in.");
         loginUrl = value.url;
-        signIn.disabled = false;
-        signIn.textContent = "Sign in to Takealot";
-        setStatus("Choose Sign in to open the page in your browser. Enter your Takealot details there; this panel will update when you’re done.");
+        linkExpired = false;
+        loginLink.value = loginUrl;
+        copyLink.disabled = false;
+        copyLabel.textContent = "Copy link";
+        setStatus("Link ready. Paste it into your browser to sign in.");
+        if (copyWhenReady) await copyCurrentLink();
       } catch (error) {
-        signIn.disabled = false;
-        signIn.textContent = "Retry sign-in setup";
+        copyLink.disabled = false;
         setStatus(error instanceof Error ? error.message : "Could not prepare sign-in.", true);
       }
     };
-
-    signIn.addEventListener("click", () => {
-      if (!loginStarted && !loginUrl) {
-        void prepareSignIn();
-        return;
+    const copyCurrentLink = async () => {
+      if (!loginUrl) return;
+      if (await copyText(loginUrl, navigator.clipboard)) {
+        setStatus("Link copied. Paste it into your browser to sign in.");
+      } else {
+        loginLink.focus();
+        loginLink.select();
+        setStatus("Link selected. Copy it, then paste it into your browser.", true);
       }
-      if (loginStarted) {
-        void waitForSignIn();
-        return;
+      void monitorSignIn();
+    };
+    copyLink.addEventListener("click", () => {
+      if (retryWishlistLoad) {
+        retryWishlistLoad = false;
+        copyLabel.textContent = "Copy link";
+        void loadWishlists();
+      } else if (linkExpired || !loginUrl) {
+        void prepareSignIn(true);
+      } else {
+        void copyCurrentLink();
       }
-      // Open the already-prepared link immediately in the click handler so the host
-      // receives a valid user gesture and can open the browser tab.
-      const opening = actions.openProduct(loginUrl!);
-      void (async () => {
-        signIn.disabled = true;
-        setStatus("Opening Takealot sign-in in your browser…");
-        try {
-          await opening;
-          loginStarted = true;
-          await waitForSignIn();
-        } catch (error) {
-          signIn.disabled = false;
-          setStatus(error instanceof Error ? error.message : "Could not open the sign-in page.", true);
-        }
-      })();
     });
-    content.append(signIn);
+    loginLink.addEventListener("click", () => {
+      loginLink.select();
+      void monitorSignIn();
+    });
     void prepareSignIn();
   };
 
@@ -471,4 +492,120 @@ export function renderSearchResult(
   });
   layout.prepend(header);
   root.replaceChildren(layout);
+}
+
+export function renderLogoutPanel(root: HTMLElement, actions: PanelActions): void {
+  const panel = makeElement("section", "logout-panel");
+  const heading = makeElement("h1", undefined, "Sign out of Takealot");
+  const intro = makeElement("p", "logout-intro", "Copy the link and open it in your browser. That removes the saved Takealot session from this computer.");
+  const status = makeElement("p", "wishlist-status");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  const label = makeElement("label", "wishlist-link-label", "Temporary sign-out link");
+  const urlInput = makeElement("input", "wishlist-login-link");
+  urlInput.type = "text";
+  urlInput.readOnly = true;
+  urlInput.autocomplete = "off";
+  urlInput.setAttribute("aria-label", "Temporary sign-out link. Select and copy it to open in your browser.");
+  const copyButton = makeElement("button", "wishlist-copy-link");
+  copyButton.type = "button";
+  copyButton.disabled = true;
+  copyButton.append(makeIcon(copyIcon, "icon-copy"));
+  const copyLabel = makeElement("span", undefined, "Copy sign-out link");
+  copyButton.append(copyLabel);
+  panel.append(heading, intro, status, label, urlInput, copyButton);
+  root.replaceChildren(panel);
+
+  let logoutUrl: string | undefined;
+  let linkExpired = false;
+  let monitoring = false;
+  const setStatus = (message: string, isError = false) => {
+    status.textContent = message;
+    status.classList.toggle("wishlist-status-error", isError);
+  };
+  const getStatus = async (): Promise<boolean> => {
+    const response = await actions.callTool("takealot.auth_status");
+    const error = toolError(response);
+    if (error) throw error;
+    const value = response.structuredContent as { authenticated?: boolean } | undefined;
+    return Boolean(value?.authenticated);
+  };
+  const createLink = async (copyWhenReady = false) => {
+    copyButton.disabled = true;
+    setStatus("Preparing a temporary sign-out link…");
+    try {
+      const response = await actions.callTool("takealot.auth_start_logout");
+      const error = toolError(response);
+      if (error) throw error;
+      const value = response.structuredContent as { url?: string } | undefined;
+      if (!value?.url) throw new Error("Could not prepare a sign-out link.");
+      logoutUrl = value.url;
+      urlInput.value = logoutUrl;
+      linkExpired = false;
+      copyButton.disabled = false;
+      copyLabel.textContent = "Copy sign-out link";
+      setStatus("Link ready. It expires after 5 minutes.");
+      if (copyWhenReady) await copyLink();
+    } catch (error) {
+      copyButton.disabled = false;
+      setStatus(error instanceof Error ? error.message : "Could not prepare sign-out.", true);
+    }
+  };
+  const watchForSignOut = async () => {
+    if (monitoring) return;
+    monitoring = true;
+    const deadline = Date.now() + 5 * 60_000;
+    while (Date.now() < deadline) {
+      try {
+        if (!(await getStatus())) {
+          monitoring = false;
+          copyLabel.textContent = "Signed out";
+          copyButton.disabled = true;
+          setStatus("You’re signed out on this computer.");
+          return;
+        }
+      } catch (error) {
+        monitoring = false;
+        setStatus(error instanceof Error ? error.message : "Could not check sign-out status.", true);
+        return;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1500));
+    }
+    monitoring = false;
+    linkExpired = true;
+    copyLabel.textContent = "Copy a new sign-out link";
+    setStatus("This sign-out link expired. Copy a new one to try again.", true);
+  };
+  const copyLink = async () => {
+    if (!logoutUrl) return;
+    if (await copyText(logoutUrl, navigator.clipboard)) {
+      setStatus("Link copied. Open it in your browser to sign out.");
+    } else {
+      urlInput.focus();
+      urlInput.select();
+      setStatus("Link selected. Copy it, then open it in your browser.", true);
+    }
+    void watchForSignOut();
+  };
+  copyButton.addEventListener("click", () => {
+    if (linkExpired || !logoutUrl) void createLink(true);
+    else void copyLink();
+  });
+  urlInput.addEventListener("click", () => {
+    urlInput.select();
+    void watchForSignOut();
+  });
+
+  void (async () => {
+    try {
+      if (!(await getStatus())) {
+        copyLabel.textContent = "Already signed out";
+        setStatus("There’s no saved Takealot session on this computer.");
+        return;
+      }
+      await createLink();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not check sign-in status.", true);
+    }
+  })();
 }

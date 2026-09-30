@@ -3,13 +3,15 @@ import test from "node:test";
 import { SearchProductCache } from "./product-cache.ts";
 
 test("restores Takealot images omitted by the model when preparing panel results", () => {
-  const cache = new SearchProductCache<{ plid: string; url: string; title: string; imageUrls: string[] }>();
+  const cache = new SearchProductCache<{ plid: string; url: string; title: string; productId: number; imageUrls: string[] }>();
   cache.remember([{
     plid: "12345",
     url: "https://www.takealot.com/headphones/PLID12345",
     title: "Wireless headphones",
+    productId: 90401948,
     imageUrls: ["https://static.takealot.com/headphones/main"],
   }]);
+  assert.equal(cache.find("https://www.takealot.com/other-slug/PLID12345")?.productId, 90401948);
 
   const groups = cache.hydrate([{
     title: "Headphones",
@@ -19,6 +21,7 @@ test("restores Takealot images omitted by the model when preparing panel results
     plid: "12345",
     url: "https://www.takealot.com/other-slug/PLID12345",
     title: "Wireless headphones",
+    productId: 90401948,
     imageUrls: ["https://static.takealot.com/headphones/main"],
   });
 });
