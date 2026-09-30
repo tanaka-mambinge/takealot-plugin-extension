@@ -6,6 +6,8 @@ const takealotUrl = z.string().url().refine((value) => {
 }, "Product links must point to Takealot.");
 
 const productSchema = z.object({
+  plid: z.string().regex(/^\d+$/).optional(),
+  productId: z.number().int().positive().optional(),
   title: z.string().trim().min(1).max(500),
   subtitle: z.string().max(500).optional(),
   description: z.string().max(2000).optional(),

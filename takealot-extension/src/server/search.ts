@@ -93,6 +93,8 @@ function normalizeProduct(viewValue: unknown, resultValue: unknown) {
   const productPath = firstString(core.desktop_href, result.desktop_href, result.href);
 
   return {
+    plid,
+    productId: number(buybox.product_id) || undefined,
     title: firstString(core.title, result.title) || "Untitled product",
     subtitle: firstString(core.subtitle, result.subtitle) || undefined,
     brand: firstString(core.brand, result.brand) || undefined,

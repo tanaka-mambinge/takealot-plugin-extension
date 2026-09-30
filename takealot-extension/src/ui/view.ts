@@ -1,9 +1,12 @@
 import externalLinkIcon from "@tabler/icons/outline/external-link.svg?raw";
+import heartPlusIcon from "@tabler/icons/outline/heart-plus.svg?raw";
 import photoIcon from "@tabler/icons/outline/photo.svg?raw";
 import truckIcon from "@tabler/icons/outline/truck-delivery.svg?raw";
 import starIcon from "@tabler/icons/filled/star.svg?raw";
 
 type Product = {
+  plid?: string;
+  productId?: number;
   title: string;
   subtitle?: string;
   description?: string;
@@ -23,6 +26,17 @@ type SearchResult = {
   returned: number;
   groups?: Array<{ title: string; reason?: string; results: Product[] }>;
   error?: string;
+};
+
+type ToolResponse = {
+  isError?: boolean;
+  structuredContent?: unknown;
+  content?: Array<{ text?: string }>;
+};
+
+type PanelActions = {
+  openProduct: (url: string) => Promise<unknown>;
+  callTool: (name: string, args?: Record<string, unknown>) => Promise<ToolResponse>;
 };
 
 function safeText(value: unknown): string {
@@ -91,11 +105,174 @@ function setImageOrFallback(container: HTMLElement, url: string | undefined, tit
   container.append(image);
 }
 
-function createProductRow(product: Product): HTMLLIElement {
+function responseMessage(response: ToolResponse): string {
+  return response.content?.map((part) => part.text ?? "").filter(Boolean).join("\n") || "The Takealot request failed.";
+}
+
+function toolError(response: ToolResponse): Error | undefined {
+  return response.isError ? new Error(responseMessage(response)) : undefined;
+}
+
+function createWishlistDialog(product: Product, actions: PanelActions): HTMLDialogElement {
+  const dialog = makeElement("dialog", "wishlist-dialog");
+  const panel = makeElement("section", "wishlist-modal");
+  const header = makeElement("header", "wishlist-modal-header");
+  const heading = makeElement("h2", undefined, "Add to wishlist");
+  const close = makeElement("button", "wishlist-close", "Close");
+  close.type = "button";
+  close.addEventListener("click", () => dialog.close());
+  header.append(heading, close);
+  const productName = makeElement("p", "wishlist-product-name", safeText(product.title));
+  const status = makeElement("p", "wishlist-status");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  const content = makeElement("div", "wishlist-modal-content");
+  panel.append(header, productName, status, content);
+  dialog.append(panel);
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+
+  const setStatus = (message: string, isError = false) => {
+    status.textContent = message;
+    status.classList.toggle("wishlist-status-error", isError);
+  };
+
+  const addToGroup = async (groupId: string): Promise<boolean> => {
+    setStatus("Adding product…");
+    try {
+      const response = await actions.callTool("takealot.wishlist_add", { groupId, productUrl: product.url });
+      const error = toolError(response);
+      if (error) throw error;
+      setStatus("Added to your wishlist.");
+      window.setTimeout(() => dialog.close(), 900);
+      return true;
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not add this product.", true);
+      return false;
+    }
+  };
+
+  const showGroups = (groups: Array<{ groupId: string; name: string; itemCount: number }>) => {
+    content.replaceChildren();
+    if (groups.length) {
+      const label = makeElement("label", "wishlist-select-label", "Choose a wishlist");
+      label.htmlFor = "wishlist-group-select";
+      const select = makeElement("select", "wishlist-select");
+      select.id = "wishlist-group-select";
+      for (const group of groups) {
+        const option = makeElement("option", undefined, `${group.name} (${group.itemCount})`);
+        option.value = group.groupId;
+        select.append(option);
+      }
+      const add = makeElement("button", "wishlist-confirm", "Add to this wishlist");
+      add.type = "button";
+      add.addEventListener("click", () => {
+        add.disabled = true;
+        void addToGroup(select.value).then((added) => { add.disabled = !added; });
+      });
+      content.append(label, select, add);
+    } else {
+      content.append(makeElement("p", "wishlist-empty", "You don’t have any wishlist groups yet."));
+    }
+
+    const create = makeElement("button", "wishlist-create-toggle", groups.length ? "Create a new wishlist" : "Create wishlist");
+    create.type = "button";
+    create.addEventListener("click", () => {
+      const form = makeElement("form", "wishlist-create-form");
+      const label = makeElement("label", undefined, "New wishlist name");
+      label.htmlFor = "wishlist-new-name";
+      const input = makeElement("input", "wishlist-name");
+      input.id = "wishlist-new-name";
+      input.name = "name";
+      input.maxLength = 100;
+      input.required = true;
+      input.autocomplete = "off";
+      input.placeholder = "For example, Sim racing setup";
+      const submit = makeElement("button", "wishlist-confirm", "Create and add product");
+      submit.type = "submit";
+      form.append(label, input, submit);
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        void (async () => {
+          submit.disabled = true;
+          setStatus("Creating wishlist…");
+          try {
+            const created = await actions.callTool("takealot.wishlist_create", { name: input.value.trim() });
+            const createError = toolError(created);
+            if (createError) throw createError;
+            const value = created.structuredContent as { groupId?: string } | undefined;
+            if (!value?.groupId) throw new Error("Takealot created the wishlist but did not return its ID.");
+            const added = await addToGroup(value.groupId);
+            if (!added) {
+              content.replaceChildren();
+              const retry = makeElement("button", "wishlist-confirm", "Try adding to the new wishlist again");
+              retry.type = "button";
+              retry.addEventListener("click", () => { void addToGroup(value.groupId!); });
+              content.append(retry);
+            }
+          } catch (error) {
+            submit.disabled = false;
+            setStatus(error instanceof Error ? error.message : "Could not create the wishlist.", true);
+          }
+        })();
+      });
+      content.replaceChildren(form);
+      input.focus();
+    });
+    content.append(create);
+  };
+
+  const showSignIn = () => {
+    content.replaceChildren();
+    setStatus("Sign in to Takealot before adding products.");
+    const signIn = makeElement("button", "wishlist-confirm", "Sign in to Takealot");
+    signIn.type = "button";
+    signIn.addEventListener("click", () => {
+      void (async () => {
+        signIn.disabled = true;
+        setStatus("Opening the secure local sign-in page…");
+        try {
+          const response = await actions.callTool("takealot.auth_start_login");
+          const error = toolError(response);
+          if (error) throw error;
+          const value = response.structuredContent as { url?: string } | undefined;
+          if (!value?.url) throw new Error("Could not start Takealot sign-in.");
+          await actions.openProduct(value.url);
+          setStatus("Finish sign-in in your browser, then close this window and choose Add to wishlist again.");
+          signIn.disabled = false;
+        } catch (error) {
+          signIn.disabled = false;
+          setStatus(error instanceof Error ? error.message : "Could not open sign-in.", true);
+        }
+      })();
+    });
+    content.append(signIn);
+  };
+
+  void (async () => {
+    setStatus("Loading your wishlists…");
+    try {
+      const response = await actions.callTool("takealot.wishlist_list");
+      const error = toolError(response);
+      if (error) {
+        if (/sign in|not connected|not logged in/i.test(error.message)) showSignIn();
+        else setStatus(error.message, true);
+        return;
+      }
+      const value = response.structuredContent as { groups?: Array<{ groupId: string; name: string; itemCount: number }> } | undefined;
+      showGroups(value?.groups ?? []);
+      setStatus("");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not load wishlists.", true);
+    }
+  })();
+  return dialog;
+}
+
+function createProductRow(product: Product, actions: PanelActions): HTMLLIElement {
   const item = makeElement("li", "product-item");
-  const button = makeElement("button", "product-card");
-  button.type = "button";
-  button.setAttribute("aria-label", `Open ${product.title} on Takealot${product.priceDisplay ? `, ${product.priceDisplay}` : ""}`);
+  const card = makeElement("article", "product-card");
 
   const imageFrame = makeElement("span", "product-image-frame");
   setImageOrFallback(imageFrame, product.imageUrls?.[0], product.title);
@@ -129,10 +306,31 @@ function createProductRow(product: Product): HTMLLIElement {
   if (product.rating?.count) rating.append(makeElement("span", "rating-count", `(${Number(product.rating.count).toLocaleString()})`));
   details.append(rating);
 
-  const action = makeElement("span", "product-action");
-  action.append(makeElement("span", undefined, "View on Takealot"), makeIcon(externalLinkIcon, "icon-external"));
-  button.append(imageStage, details, action);
-  item.append(button);
+  const actionsRow = makeElement("div", "product-actions");
+  const view = makeElement("button", "product-action", "View on Takealot");
+  view.type = "button";
+  view.setAttribute("aria-label", `Open ${product.title} on Takealot`);
+  view.append(makeIcon(externalLinkIcon, "icon-external"));
+  view.addEventListener("click", () => {
+    void actions.openProduct(product.url).catch(() => {
+      const message = makeElement("p", "product-feedback", "Takealot couldn’t open this product. Try again.");
+      item.append(message);
+    });
+  });
+  const wishlist = makeElement("button", "product-action product-action-secondary", "Add to wishlist");
+  wishlist.type = "button";
+  wishlist.setAttribute("aria-label", `Add ${product.title} to a Takealot wishlist`);
+  wishlist.prepend(makeIcon(heartPlusIcon, "icon-heart"));
+  wishlist.addEventListener("click", () => {
+    wishlist.disabled = true;
+    const dialog = createWishlistDialog(product, actions);
+    document.body.append(dialog);
+    dialog.addEventListener("close", () => { dialog.remove(); wishlist.disabled = false; wishlist.focus(); }, { once: true });
+    dialog.showModal();
+  });
+  actionsRow.append(view, wishlist);
+  card.append(imageStage, details, actionsRow);
+  item.append(card);
   return item;
 }
 
@@ -143,7 +341,10 @@ export function renderInitial(root: HTMLElement): void {
 export function renderSearchResult(
   root: HTMLElement,
   value: unknown,
-  openProduct: (url: string) => void | Promise<unknown> = (url) => window.open(url, "_blank", "noopener,noreferrer"),
+  actions: PanelActions = {
+    openProduct: async (url) => window.open(url, "_blank", "noopener,noreferrer"),
+    callTool: async () => { throw new Error("MCP actions are unavailable."); },
+  },
 ): void {
   const result = value && typeof value === "object" ? (value as SearchResult) : undefined;
   if (!result) {
@@ -184,17 +385,7 @@ export function renderSearchResult(
     if (group.reason) groupHeader.append(makeElement("p", "group-reason", safeText(group.reason)));
     const list = makeElement("ul", "product-list");
     group.results.forEach((product) => {
-      const item = createProductRow(product);
-      const button = item.querySelector<HTMLButtonElement>(".product-card");
-      button?.addEventListener("click", () => {
-        void Promise.resolve(openProduct(product.url)).then((result) => {
-          if (result && typeof result === "object" && "isError" in result && result.isError) {
-            renderMessage(root, "Takealot couldn’t open", "Try opening this product again.", "error");
-          }
-        }).catch(() => {
-          renderMessage(root, "Takealot couldn’t open", "Try opening this product again.", "error");
-        });
-      });
+      const item = createProductRow(product, actions);
       list.append(item);
     });
     section.append(groupHeader, list);

@@ -14,11 +14,18 @@ import type {
   OpenAIUiResourceMetadata,
   OpenAIUiToolMetadata,
 } from "@openai/mcp-extensions/server";
+import { TakealotAccountClient } from "./account.js";
+import { registerAccountTools } from "./account-tools.js";
+import { LocalLoginFlow } from "./login-flow.js";
 import { prepareGroupedResults, showResultsInput, showResultsShape } from "./presentation.js";
 import { searchInput, searchInputShape, searchTakealot } from "./search.js";
+import { SystemSessionStore } from "./session-store.js";
 
 const server = new McpServer({ name: "takealot-extension", version: "0.1.0" });
 new OpenAIExtensions(server);
+const account = new TakealotAccountClient(new SystemSessionStore());
+const loginFlow = new LocalLoginFlow(account);
+registerAccountTools(server, account, loginFlow);
 const panelUri = "ui://takealot-extension/product-results";
 const panelFile = resolve(dirname(fileURLToPath(import.meta.url)), "../ui/index.html");
 const entrypointIcon = `data:image/svg+xml,${encodeURIComponent(shoppingBagIcon

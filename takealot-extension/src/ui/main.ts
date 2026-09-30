@@ -9,10 +9,13 @@ if (root) renderInitial(root);
 
 app.ontoolresult = (result) => {
   if (root) {
-    renderSearchResult(root, result.structuredContent, async (url) => {
-      const response = await app.openLink({ url });
-      if (response.isError) throw new Error("The host could not open the Takealot listing.");
-      return response;
+    renderSearchResult(root, result.structuredContent, {
+      openProduct: async (url) => {
+        const response = await app.openLink({ url });
+        if (response.isError) throw new Error("The host could not open the link.");
+        return response;
+      },
+      callTool: (name, args = {}) => app.callServerTool({ name, arguments: args }),
     });
   }
 };
