@@ -57,6 +57,7 @@ button, a { font: inherit; }
 .product-delivery { display: flex; align-items: center; gap: 5px; color: var(--panel-muted); font-size: 12px; line-height: 1.35; }
 .icon-delivery { width: 15px; height: 15px; color: var(--tal-green); }
 .product-rating { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 1px; color: var(--panel-muted); font-size: 12px; }
+.product-review-summary { margin: 2px 0 0; color: #454950; font-size: 12px; line-height: 1.4; }
 .icon-star { width: 14px; height: 14px; color: #f2a900; fill: currentColor; stroke-width: 0; }
 .rating-value { color: var(--panel-muted); }
 .rating-count { color: var(--panel-muted); }

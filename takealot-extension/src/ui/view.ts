@@ -19,6 +19,7 @@ type Product = {
   deliveryDisplay?: string;
   rating: { average: number; count: number };
   imageUrls: string[];
+  reviewSummary?: string;
 };
 
 type SearchResult = {
@@ -305,6 +306,8 @@ function createProductRow(product: Product, actions: PanelActions): HTMLLIElemen
   rating.append(makeElement("span", "rating-value", product.rating?.average ? `${Number(product.rating.average).toFixed(1)} out of 5` : "No rating yet"));
   if (product.rating?.count) rating.append(makeElement("span", "rating-count", `(${Number(product.rating.count).toLocaleString()})`));
   details.append(rating);
+  const reviewSummary = safeText(product.reviewSummary);
+  if (reviewSummary) details.append(makeElement("p", "product-review-summary", reviewSummary));
 
   const actionsRow = makeElement("div", "product-actions");
   const view = makeElement("button", "product-action", "View on Takealot");

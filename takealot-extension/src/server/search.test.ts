@@ -13,8 +13,9 @@ const sampleResponse = {
             subtitle: "True wireless earphones",
             brand: "Volkano",
             desktop_href: "/product/volkano-scorpio/PLID66383997",
+            image_url: "https://images.takealot.com/scorpio?size=large",
           },
-          gallery: { images: [{ url: "https://media.takealot.com/images/earbuds.jpg" }] },
+          gallery: { images: [{ url: "https://media.takealot.com/images/earbuds.jpg" }, { src: "https://static.takealot.com/scorpio/main" }] },
           buybox_summary: { product_id: 90401948, pretty_price: "R 299" },
           review_summary: { star_rating: 4.7, review_count: 3044 },
           stock_availability_summary: { status: "In stock" },
@@ -52,7 +53,7 @@ test("searches the Takealot catalogue and normalizes its product results", async
       availability: "In stock",
       deliveryDisplay: undefined,
       rating: { average: 4.7, count: 3044 },
-      imageUrls: ["https://media.takealot.com/images/earbuds.jpg"],
+      imageUrls: ["https://media.takealot.com/images/earbuds.jpg", "https://static.takealot.com/scorpio/main", "https://images.takealot.com/scorpio?size=large"],
     }],
   });
 });

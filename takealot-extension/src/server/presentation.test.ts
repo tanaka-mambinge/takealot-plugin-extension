@@ -14,6 +14,7 @@ test("validates and prepares model-selected groups for the panel", () => {
         priceDisplay: "R 499",
         rating: { average: 4.4, count: 24 },
         imageUrls: ["https://media.takealot.com/example.jpg"],
+        reviewSummary: "Owners praise comfort; a few mention weak noise cancelling.",
       }],
     }],
   });
@@ -30,6 +31,7 @@ test("validates and prepares model-selected groups for the panel", () => {
         priceDisplay: "R 499",
         rating: { average: 4.4, count: 24 },
         imageUrls: ["https://media.takealot.com/example.jpg"],
+        reviewSummary: "Owners praise comfort; a few mention weak noise cancelling.",
       }],
     }],
   });

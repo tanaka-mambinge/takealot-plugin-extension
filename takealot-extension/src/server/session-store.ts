@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 export type TakealotSession = {
   jwt: string;
@@ -21,13 +23,29 @@ export interface SessionStore {
 
 const ATTRIBUTES = ["service", "takealot-extension", "account", "default"];
 const NOT_FOUND = /secret not found|no such secret|object does not exist/i;
-type SecretToolRunner = (args: string[], input?: string) => Promise<string>;
+type SecretToolRunner = (args: string[], input?: string, environment?: NodeJS.ProcessEnv) => Promise<string>;
 
 class MissingSecretError extends Error {}
 
-function secretTool(args: string[], input?: string): Promise<string> {
+export function secretToolEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+  hasPath: (path: string) => boolean = existsSync,
+): NodeJS.ProcessEnv {
+  if (environment.DBUS_SESSION_BUS_ADDRESS) return { ...environment };
+  const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+  const runtimeDir = environment.XDG_RUNTIME_DIR || (uid === undefined ? undefined : `/run/user/${uid}`);
+  const candidates = [runtimeDir && join(runtimeDir, "bus"), uid === undefined ? undefined : `/run/user/${uid}/bus`];
+  const busPath = candidates.find((candidate): candidate is string => Boolean(candidate && hasPath(candidate)));
+  return {
+    ...environment,
+    ...(runtimeDir ? { XDG_RUNTIME_DIR: runtimeDir } : {}),
+    ...(busPath ? { DBUS_SESSION_BUS_ADDRESS: `unix:path=${busPath}` } : {}),
+  };
+}
+
+function secretTool(args: string[], input?: string, environment = secretToolEnvironment()): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn("secret-tool", args, { stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn("secret-tool", args, { stdio: ["pipe", "pipe", "pipe"], env: environment });
     let stdout = "";
     let stderr = "";
     child.stdout.setEncoding("utf8").on("data", (chunk: string) => { stdout += chunk; });
@@ -36,6 +54,7 @@ function secretTool(args: string[], input?: string): Promise<string> {
     child.once("close", (code) => {
       if (code === 0) resolve(stdout.trimEnd());
       else if (code === 1 && !stderr.trim() && ["lookup", "clear"].includes(args[0] ?? "")) reject(new MissingSecretError("No saved Takealot session."));
+      else if (/Cannot autolaunch D-Bus/i.test(stderr)) reject(new Error("The desktop password vault is unavailable in this Codex session. Sign in from your desktop session, then restart Codex."));
       else reject(new Error(stderr || `secret-tool exited with code ${code ?? "unknown"}`));
     });
     if (input !== undefined) child.stdin.end(input);

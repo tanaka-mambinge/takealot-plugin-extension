@@ -1,11 +1,11 @@
 ---
 name: takealot-extension
-description: Search Takealot through MCP, group relevant listings in the panel, and manage wishlists when asked.
+description: Search Takealot through MCP, check product reviews, group relevant listings in the panel, and manage wishlists when asked.
 ---
 
 # Takealot Extension
 
-This is an unofficial, local Codex extension. Use its MCP tools for all Takealot search and wishlist requests. Never use web search for Takealot product discovery or call Takealot endpoints outside the MCP tools.
+This is an unofficial, local Codex extension. Use its MCP tools for all Takealot search, review, and wishlist requests. Never use web search for Takealot product discovery or call Takealot endpoints outside the MCP tools.
 
 ## Product search
 
@@ -15,15 +15,17 @@ When the user asks to find products on Takealot:
 2. For one product type, call `takealot.search_products` once with a focused phrase. Set `limit` only when the user asks for a specific number; otherwise use the default of 36 to get the full search page. Search results return candidates to you without opening the panel.
 3. For a multi-product request, identify the product categories needed and call `takealot.search_products` separately for each category. For example, a starter sim racing setup may need a wheel/base, pedals, a seat or cockpit, and optionally a shifter, handbrake, or display depending on the user's setup. Keep required and optional parts clear, and do not claim compatibility unless the returned product data supports it.
 4. Compare candidates against the user's needs and budget. Group matching listings by product type or useful trade-off. Pass through every plausible matching listing so the user has a broad choice; omit only clear mismatches. Do not reduce the list to a few recommendations or invent products and details.
-5. Call `takealot.show_results` with the original request and groups containing only products returned by `takealot.search_products`. Add a short reason for each group when it helps the user choose.
-6. Summarize the strongest matches in chat. The panel displays the grouped product cards. **View on Takealot** opens the listing. **Add to wishlist** loads the user's groups and requires them to choose a group or create one before the panel adds the product.
+5. When recommending or comparing specific products, inspect reviews for the shortlisted products with `takealot.product_reviews` before deciding. For products with enough reviews, check both five-star and one-star feedback; use latest reviews when freshness matters. For a broad browse list, review the products you actively recommend instead of every search result.
+6. Base recommendations on recurring review themes, not one isolated comment. Mention meaningful drawbacks as well as strengths, distinguish review evidence from your inference, and say when a product has few or no reviews. Do not claim a small sample represents all customers.
+7. Call `takealot.show_results` with the original request and groups containing only products returned by `takealot.search_products`. Add a short reason for each group when it helps the user choose. For products with reviews you checked, pass a concise, balanced `reviewSummary` on the card; never invent review themes.
+8. Summarize the strongest matches in chat, including material review findings. The panel displays the grouped product cards. **View on Takealot** opens the listing. **Add to wishlist** loads the user's groups and requires them to choose a group or create one before the panel adds the product.
 
 ## Examples
 
 - One product: “Find wireless headphones on Takealot.” Search once and show the relevant listings.
 - Full setup: “Build a complete starter sim racing setup; find everything I need to get started.” Search each component category separately, then show results grouped by category so the user can choose.
 
-Use `takealot.search_products` for catalogue search. The `takealot.show_results` tool only displays the selected listings; it does not search or fetch products. Product details are requested through MCP only when needed to resolve the numeric product ID for a wishlist change.
+Use `takealot.search_products` for catalogue search and `takealot.product_reviews` to read reviews by numeric PLID from a search result. Reviews return at most 10 entries per page and omit reviewer names and account identifiers. The `takealot.show_results` tool only displays selected listings; it does not search or fetch products. Product details are requested through MCP only when needed to resolve the numeric product ID for a wishlist change.
 
 If search returns no matches, say so and suggest trying a shorter or different phrase. If the search fails, report that Takealot search is unavailable; do not fall back to web search.
 

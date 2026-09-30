@@ -22,7 +22,8 @@ const productSchema = z.object({
     average: z.number().min(0).max(5).optional(),
     count: z.number().int().min(0).optional(),
   }).optional(),
-  imageUrls: z.array(z.string().url().refine((value) => new URL(value).protocol === "https:")).max(5).optional(),
+  imageUrls: z.array(z.string().url().refine((value) => new URL(value).protocol === "https:")).max(10).optional(),
+  reviewSummary: z.string().trim().max(300).optional().describe("A concise, balanced summary of review themes checked with takealot.product_reviews."),
 });
 
 export const showResultsShape = {

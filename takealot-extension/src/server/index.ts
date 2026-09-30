@@ -19,6 +19,7 @@ import { registerAccountTools } from "./account-tools.js";
 import { LocalLoginFlow } from "./login-flow.js";
 import { prepareGroupedResults, showResultsInput, showResultsShape } from "./presentation.js";
 import { searchInput, searchInputShape, searchTakealot } from "./search.js";
+import { getTakealotReviews, reviewInput, reviewInputShape } from "./reviews.js";
 import { SystemSessionStore } from "./session-store.js";
 
 const server = new McpServer({ name: "takealot-extension", version: "0.1.0" });
@@ -28,6 +29,7 @@ const loginFlow = new LocalLoginFlow(account);
 registerAccountTools(server, account, loginFlow);
 const panelUri = "ui://takealot-extension/product-results";
 const panelFile = resolve(dirname(fileURLToPath(import.meta.url)), "../ui/index.html");
+const imageDomains = ["https://media.takealot.com", "https://static.takealot.com", "https://images.takealot.com"];
 const entrypointIcon = `data:image/svg+xml,${encodeURIComponent(shoppingBagIcon
   .replace('width="24"', 'width="20"')
   .replace('height="24"', 'height="20"')
@@ -35,7 +37,7 @@ const entrypointIcon = `data:image/svg+xml,${encodeURIComponent(shoppingBagIcon
 const resourceMetadata = {
   ui: {
     csp: {
-      resourceDomains: ["https://media.takealot.com"],
+      resourceDomains: imageDomains,
     },
   },
   "openai/ui": {
@@ -48,7 +50,7 @@ registerAppResource(
   server,
   "Takealot product results",
   panelUri,
-  { _meta: { ui: { csp: { resourceDomains: ["https://media.takealot.com"] } } } },
+  { _meta: { ui: { csp: { resourceDomains: imageDomains } } } },
   async () => ({
     contents: [
       {
@@ -85,10 +87,34 @@ server.registerTool(
   },
 );
 
+server.registerTool(
+  "takealot.product_reviews",
+  {
+    title: "Read Takealot product reviews",
+    description: "Fetch up to 10 real Takealot customer reviews for a product PLID. Use this when comparing or recommending products so the recommendation reflects both positive and negative customer feedback. Returns review text, rating, date, and helpful votes; omits reviewer identity. This is read-only and does not use web search.",
+    inputSchema: reviewInputShape,
+    annotations: { readOnlyHint: true, openWorldHint: true },
+  },
+  async (input) => {
+    try {
+      const parsed = reviewInput.parse(input);
+      const result = await getTakealotReviews(parsed);
+      return {
+        content: [{ type: "text", text: result.total
+          ? `Read ${result.reviews.length} of ${result.total} Takealot reviews for PLID${result.plid}. Review the sample for both strengths and recurring complaints before recommending this product.\n${JSON.stringify(result)}`
+          : `No Takealot reviews found for PLID${result.plid}.` }],
+        structuredContent: result,
+      };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: error instanceof Error ? error.message : "Takealot reviews request failed." }] };
+    }
+  },
+);
+
 const showResultsToolConfig = {
   title: "Show grouped Takealot results",
   description:
-    "Display Takealot listings from takealot.search_products, organized into groups that match the user's needs. Include all plausible matches so the user can browse and choose; do not show only a few top recommendations. Pass only products returned by that search. This is the panel display step; it does not search or fetch products.",
+    "Display Takealot listings from takealot.search_products, organized into groups that match the user's needs. Include all plausible matches so the user can browse and choose; do not show only a few top recommendations. Pass only products returned by that search. For products whose reviews you checked, include a short balanced reviewSummary. This is the panel display step; it does not search or fetch products.",
   inputSchema: showResultsShape,
   annotations: { readOnlyHint: true, openWorldHint: false },
   icons: [{ src: entrypointIcon, mimeType: "image/svg+xml", sizes: ["20x20"] }],

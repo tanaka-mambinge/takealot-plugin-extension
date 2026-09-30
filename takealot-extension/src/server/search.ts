@@ -57,21 +57,23 @@ function canonicalProductUrl(value: string, plid: string, slug: string): string 
 
 function imageUrls(value: unknown): string[] {
   const found = new Set<string>();
-  const visit = (node: unknown): void => {
+  const visit = (node: unknown, key = ""): void => {
     if (typeof node === "string") {
-      if (/^https:\/\//i.test(node) && /(media\.takealot\.com|\.(?:jpe?g|png|webp)(?:[?#]|$))/i.test(node)) {
+      if (/^https:\/\//i.test(node) && (/(?:media|static|images)\.takealot\.com|\.(?:jpe?g|png|webp|avif)(?:[?#]|$)/i.test(node) || /image/i.test(key))) {
         found.add(node.replaceAll("{size}", "full"));
       }
       return;
     }
     if (Array.isArray(node)) {
-      node.forEach(visit);
+      node.forEach((child) => visit(child, key));
       return;
     }
-    if (node && typeof node === "object") Object.values(node).forEach(visit);
+    if (node && typeof node === "object") {
+      Object.entries(node).forEach(([childKey, child]) => visit(child, childKey));
+    }
   };
   visit(value);
-  return [...found].slice(0, 5);
+  return [...found].slice(0, 10);
 }
 
 function normalizeProduct(viewValue: unknown, resultValue: unknown) {
@@ -84,7 +86,9 @@ function normalizeProduct(viewValue: unknown, resultValue: unknown) {
   const plid = firstString(core.id);
   if (!/^\d+$/.test(plid)) return undefined;
   const gallery = imageUrls(view.gallery);
-  if (!gallery.length) gallery.push(...imageUrls(result.gallery));
+  for (const candidate of [view.images, view.image, core.image, core.images, core, result.gallery, result.images, result.image, result]) {
+    for (const url of imageUrls(candidate)) if (!gallery.includes(url)) gallery.push(url);
+  }
   const average = number(rating.star_rating ?? rating.average ?? rating.rating);
   const count = Math.max(0, Math.trunc(number(rating.review_count ?? rating.count ?? rating.total)));
   const available = stock.is_in_stock ?? stock.in_stock ?? stock.is_available ?? stock.available;
@@ -103,7 +107,7 @@ function normalizeProduct(viewValue: unknown, resultValue: unknown) {
     availability,
     deliveryDisplay: firstString(stock.estimated_delivery, stock.delivery_date) || undefined,
     rating: { average, count },
-    imageUrls: gallery,
+    imageUrls: gallery.slice(0, 10),
   };
 }
 
