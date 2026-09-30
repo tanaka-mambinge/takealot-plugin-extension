@@ -12,7 +12,7 @@ An unofficial, local Codex extension that searches Takealot through MCP, display
 
 ## Sign in and manage wishlists
 
-The extension starts its MCP server locally in Codex. Wishlist requests go through that MCP server to Takealot. When you choose **Add to wishlist** while signed out, the panel opens a short-lived sign-in page at a local address on your computer. Your password and one-time code are sent directly from that page to Takealot. The returned session is stored in the Linux Secret Service password vault; the extension does not write it to a file or show it to the model. If the password vault is locked or unavailable, sign-in fails without a plaintext fallback.
+The extension starts its MCP server locally in Codex. Wishlist requests go through that MCP server to Takealot. When you choose **Add to wishlist** while signed out, choose **Sign in to Takealot** to open a short-lived sign-in page in your browser. Enter your password and any one-time code there. Keep the results panel open; it checks for sign-in and loads your wishlists automatically. The returned session is stored in the Linux Secret Service password vault; the extension does not write it to a file or show it to the model. If the password vault is locked or unavailable, sign-in fails without a plaintext fallback.
 
 The MCP tools can check sign-in, start sign-in, sign out, list wishlist groups and items, create or rename groups, delete groups, add products, and remove a product from all groups. Agent-initiated changes require confirmation. The panel's Add button is confirmation for the product and group selected there.
 

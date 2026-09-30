@@ -20,12 +20,15 @@ import { LocalLoginFlow } from "./login-flow.js";
 import { prepareGroupedResults, showResultsInput, showResultsShape } from "./presentation.js";
 import { searchInput, searchInputShape, searchTakealot } from "./search.js";
 import { getTakealotReviews, reviewInput, reviewInputShape } from "./reviews.js";
+import { SearchProductCache } from "./product-cache.js";
 import { SystemSessionStore } from "./session-store.js";
 
 const server = new McpServer({ name: "takealot-extension", version: "0.1.0" });
 new OpenAIExtensions(server);
 const account = new TakealotAccountClient(new SystemSessionStore());
 const loginFlow = new LocalLoginFlow(account);
+type SearchProduct = NonNullable<Awaited<ReturnType<typeof searchTakealot>>["results"][number]>;
+const searchedProducts = new SearchProductCache<SearchProduct>();
 registerAccountTools(server, account, loginFlow);
 const panelUri = "ui://takealot-extension/product-results";
 const panelFile = resolve(dirname(fileURLToPath(import.meta.url)), "../ui/index.html");
@@ -75,6 +78,7 @@ server.registerTool(
   async (input) => {
     const parsed = searchInput.parse(input);
     const result = await searchTakealot(parsed);
+    searchedProducts.remember(result.results.filter((product): product is SearchProduct => Boolean(product)));
     return {
       content: [{
         type: "text",
@@ -132,7 +136,8 @@ registerAppTool(
   showResultsToolConfig,
   async (input) => {
     const parsed = showResultsInput.parse(input);
-    const result = prepareGroupedResults(parsed);
+    const completed = { ...parsed, groups: searchedProducts.hydrate(parsed.groups) };
+    const result = prepareGroupedResults(completed);
     return {
       content: [{
         type: "text",

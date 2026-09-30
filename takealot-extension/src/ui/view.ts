@@ -226,29 +226,104 @@ function createWishlistDialog(product: Product, actions: PanelActions): HTMLDial
 
   const showSignIn = () => {
     content.replaceChildren();
-    setStatus("Sign in to Takealot before adding products.");
     const signIn = makeElement("button", "wishlist-confirm", "Sign in to Takealot");
     signIn.type = "button";
-    signIn.addEventListener("click", () => {
-      void (async () => {
-        signIn.disabled = true;
-        setStatus("Opening the secure local sign-in page…");
+    let loginStarted = false;
+    let loginUrl: string | undefined;
+    setStatus("We’ll open a secure Takealot sign-in page. Keep this panel open; your wishlists will appear here when you’re done.");
+    const loadWishlists = async (): Promise<boolean> => {
+      setStatus("Signed in. Loading your wishlists…");
+      const response = await actions.callTool("takealot.wishlist_list");
+      const error = toolError(response);
+      if (error) {
+        setStatus(error.message, true);
+        return false;
+      }
+      const value = response.structuredContent as { groups?: Array<{ groupId: string; name: string; itemCount: number }> } | undefined;
+      showGroups(value?.groups ?? []);
+      setStatus("Choose where to save this product.");
+      return true;
+    };
+    const waitForSignIn = async () => {
+      const deadline = Date.now() + 5 * 60_000;
+      signIn.disabled = true;
+      signIn.textContent = "Checking sign-in…";
+      setStatus("Finish signing in in the browser tab. This panel will update automatically.");
+      while (dialog.open && Date.now() < deadline) {
         try {
-          const response = await actions.callTool("takealot.auth_start_login");
+          const response = await actions.callTool("takealot.auth_status");
           const error = toolError(response);
           if (error) throw error;
-          const value = response.structuredContent as { url?: string } | undefined;
-          if (!value?.url) throw new Error("Could not start Takealot sign-in.");
-          await actions.openProduct(value.url);
-          setStatus("Finish sign-in in your browser, then close this window and choose Add to wishlist again.");
+          const value = response.structuredContent as { authenticated?: boolean } | undefined;
+          if (value?.authenticated) {
+            const loaded = await loadWishlists();
+            if (!loaded && dialog.open) {
+              signIn.disabled = false;
+              signIn.textContent = "Retry loading wishlists";
+            }
+            return;
+          }
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : "Could not check Takealot sign-in.", true);
           signIn.disabled = false;
+          signIn.textContent = "Check sign-in again";
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 1500));
+      }
+      if (!dialog.open) return;
+      setStatus("Sign-in hasn’t been detected yet. Finish it in the browser, then choose Check sign-in again.");
+      signIn.disabled = false;
+      signIn.textContent = "Check sign-in again";
+    };
+    const prepareSignIn = async () => {
+      signIn.disabled = true;
+      signIn.textContent = "Preparing sign-in…";
+      setStatus("Preparing your secure sign-in page…");
+      try {
+        const response = await actions.callTool("takealot.auth_start_login");
+        const error = toolError(response);
+        if (error) throw error;
+        const value = response.structuredContent as { url?: string } | undefined;
+        if (!value?.url) throw new Error("Could not prepare Takealot sign-in.");
+        loginUrl = value.url;
+        signIn.disabled = false;
+        signIn.textContent = "Sign in to Takealot";
+        setStatus("Choose Sign in to open the page in your browser. Enter your Takealot details there; this panel will update when you’re done.");
+      } catch (error) {
+        signIn.disabled = false;
+        signIn.textContent = "Retry sign-in setup";
+        setStatus(error instanceof Error ? error.message : "Could not prepare sign-in.", true);
+      }
+    };
+
+    signIn.addEventListener("click", () => {
+      if (!loginStarted && !loginUrl) {
+        void prepareSignIn();
+        return;
+      }
+      if (loginStarted) {
+        void waitForSignIn();
+        return;
+      }
+      // Open the already-prepared link immediately in the click handler so the host
+      // receives a valid user gesture and can open the browser tab.
+      const opening = actions.openProduct(loginUrl!);
+      void (async () => {
+        signIn.disabled = true;
+        setStatus("Opening Takealot sign-in in your browser…");
+        try {
+          await opening;
+          loginStarted = true;
+          await waitForSignIn();
         } catch (error) {
           signIn.disabled = false;
-          setStatus(error instanceof Error ? error.message : "Could not open sign-in.", true);
+          setStatus(error instanceof Error ? error.message : "Could not open the sign-in page.", true);
         }
       })();
     });
     content.append(signIn);
+    void prepareSignIn();
   };
 
   void (async () => {
