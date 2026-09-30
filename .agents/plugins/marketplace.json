@@ -1,0 +1,20 @@
+{
+  "name": "takealot-extension-dev",
+  "interface": {
+    "displayName": "Takealot Extension (Local)"
+  },
+  "plugins": [
+    {
+      "name": "takealot-extension",
+      "source": {
+        "source": "local",
+        "path": "./takealot-extension"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Shopping"
+    }
+  ]
+}

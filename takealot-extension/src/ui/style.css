@@ -1,0 +1,82 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #222;
+  background: #fff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --tal-blue: #1682c4;
+  --tal-green: #198b45;
+  --panel-surface: #fff;
+  --panel-raised: #fff;
+  --panel-border: #dedfe2;
+  --panel-muted: #696d73;
+  --panel-focus: #1682c4;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 0; margin: 0; color: inherit; background: var(--panel-surface); }
+button, a { font: inherit; }
+#app { width: 100%; min-height: 100vh; padding: 14px clamp(12px, 1.7vw, 22px) 24px; }
+.results-layout { width: 100%; margin: 0 auto; }
+.results-header { margin: 0 0 14px; }
+.results-header h1, .state h1 { margin: 0; }
+.results-header h1 { font-size: clamp(19px, 2.2vw, 22px); line-height: 1.3; font-weight: 680; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.results-header p { margin: 4px 0 0; color: var(--panel-muted); font-size: 13px; }
+.product-group + .product-group { margin-top: 24px; }
+.group-header { margin: 0 0 10px; }
+.group-title { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 650; }
+.group-reason { margin: 3px 0 0; color: var(--panel-muted); font-size: 13px; line-height: 1.4; }
+.product-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 320px)); align-items: stretch; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.product-item { min-width: 0; }
+.product-card {
+  display: flex; width: 100%; min-width: 0; height: 100%; flex-direction: column; align-items: stretch;
+  padding: 0; overflow: hidden; border: 1px solid var(--panel-border); border-radius: 7px;
+  color: inherit; background: var(--panel-raised); text-align: left; cursor: pointer;
+  box-shadow: 0 1px 3px rgb(20 24 32 / 12%);
+  transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
+}
+.product-card:hover { border-color: color-mix(in srgb, var(--tal-blue) 45%, var(--panel-border)); box-shadow: 0 4px 13px rgb(20 24 32 / 14%); transform: translateY(-1px); }
+.product-card:active { transform: translateY(0); }
+.product-card:focus-visible { outline: 2px solid var(--panel-focus); outline-offset: 3px; }
+.product-image-stage { position: relative; display: block; width: 100%; padding: 8px 8px 0; }
+.product-image-frame { display: grid; width: 100%; aspect-ratio: 1.12; place-items: center; overflow: hidden; background: var(--panel-raised); }
+.product-image-frame .product-image { display: block; width: 100%; height: 100%; object-fit: contain; }
+.image-frame-empty { padding: 12px; background: #f3f4f5; }
+.image-fallback { display: grid; justify-items: center; gap: 7px; color: var(--panel-muted); font-size: 12px; text-align: center; }
+.ui-icon { display: block; width: 18px; height: 18px; flex: 0 0 auto; stroke: currentColor; stroke-width: 1.7; }
+.icon-photo { width: 26px; height: 26px; opacity: .65; }
+.discount-badge { position: absolute; z-index: 1; top: 10px; left: 10px; padding: 7px 8px; border-radius: 4px; color: white; background: var(--tal-blue); font-size: 11px; font-weight: 750; }
+.product-copy { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; align-items: flex-start; gap: 7px; padding: 10px 14px 12px; }
+.product-brand { color: var(--tal-blue); font-size: 13px; line-height: 1.3; }
+.product-title { display: -webkit-box; min-height: 2.7em; overflow: hidden; color: #222; font-size: 14px; font-weight: 450; line-height: 1.35; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.product-facts { display: flex; min-height: 25px; flex-wrap: wrap; align-items: baseline; gap: 7px; margin-top: 1px; }
+.product-price { color: #222; font-size: 19px; font-weight: 750; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.product-list-price { color: var(--panel-muted); font-size: 13px; text-decoration: line-through; }
+.product-availability { color: var(--panel-muted); font-size: 12px; }
+.product-delivery { display: flex; align-items: center; gap: 5px; color: var(--panel-muted); font-size: 12px; line-height: 1.35; }
+.icon-delivery { width: 15px; height: 15px; color: var(--tal-green); }
+.product-rating { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 1px; color: var(--panel-muted); font-size: 12px; }
+.icon-star { width: 14px; height: 14px; color: #f2a900; fill: currentColor; stroke-width: 0; }
+.rating-value { color: var(--panel-muted); }
+.rating-count { color: var(--panel-muted); }
+.product-action { display: flex; min-height: 43px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px; margin: auto 14px 14px; border: 1px solid var(--tal-green); border-radius: 2px; color: var(--tal-green); background: transparent; font-size: 14px; font-weight: 680; }
+.icon-external { width: 15px; height: 15px; }
+.product-card:hover .product-action { background: color-mix(in srgb, var(--tal-green) 7%, transparent); }
+.state { display: grid; min-height: 56vh; align-content: center; justify-items: center; padding: 30px 18px; text-align: center; }
+.state h1 { font-size: 19px; line-height: 1.35; font-weight: 680; }
+.state p { max-width: 390px; margin: 8px 0 0; color: var(--panel-muted); font-size: 14px; line-height: 1.55; }
+.state-error h1 { color: #b42318; }
+@media (max-width: 520px) {
+  #app { padding: 12px 10px 20px; }
+  .product-list { grid-template-columns: 1fr; gap: 10px; }
+  .product-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); grid-template-rows: auto 1fr; padding: 8px; gap: 0 10px; }
+  .product-image-stage { grid-row: 1 / span 2; padding: 0; }
+  .product-image-frame { aspect-ratio: 1; }
+  .discount-badge { top: 4px; left: 4px; padding: 5px; font-size: 10px; }
+  .product-copy { padding: 3px 2px 5px; gap: 5px; }
+  .product-title { min-height: 0; font-size: 13px; -webkit-line-clamp: 3; }
+  .product-price { font-size: 17px; }
+  .product-action { grid-column: 2; min-height: 36px; margin: 4px 2px 2px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
