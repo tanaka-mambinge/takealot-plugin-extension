@@ -91,7 +91,7 @@ export class SystemSessionStore implements SessionStore {
       throw new Error("Takealot did not return a complete sign-in session.");
     }
     try {
-      await this.runSecretTool(["store", "--label=Takealot Extension session", ...ATTRIBUTES], JSON.stringify(session));
+      await this.runSecretTool(["store", "--label=Takealot session", ...ATTRIBUTES], JSON.stringify(session));
     } catch (error) {
       throw new Error(`Could not save the session in the system password vault: ${error instanceof Error ? error.message : "unknown error"}`);
     }

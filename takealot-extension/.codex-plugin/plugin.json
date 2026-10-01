@@ -1,7 +1,7 @@
 {
   "name": "takealot-extension",
   "version": "0.1.0+codex.20260930100205",
-  "description": "Unofficial Takealot product search extension for Codex.",
+  "description": "Unofficial Takealot shopping plugin for Codex.",
   "author": {
     "name": "Tanaka Mambinge",
     "url": "https://github.com/tanaka-mambinge"
@@ -9,9 +9,9 @@
   "repository": "https://github.com/tanaka-mambinge/takealot-plugin-extension",
   "skills": "./skills/",
   "interface": {
-    "displayName": "Takealot Extension",
+    "displayName": "Takealot",
     "shortDescription": "Unofficial Takealot product search.",
-    "longDescription": "An unofficial extension for searching Takealot from chat. Browse product images, prices, ratings, and links in a results panel.",
+    "longDescription": "An unofficial Takealot shopping plugin for Codex. Search products, compare options, and manage wishlists from chat and a results panel.",
     "developerName": "Tanaka Mambinge (unofficial)",
     "category": "Shopping",
     "capabilities": [

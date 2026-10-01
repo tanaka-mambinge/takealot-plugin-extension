@@ -3,9 +3,9 @@ name: takealot-extension
 description: Search Takealot through MCP, check product reviews, group relevant listings in the panel, and manage wishlists when asked.
 ---
 
-# Takealot Extension
+# Takealot
 
-This is an unofficial, local Codex extension. Use its MCP tools for all Takealot search, review, and wishlist requests. Never use web search for Takealot product discovery or call Takealot endpoints outside the MCP tools.
+This is an unofficial, local Codex plugin. Use its MCP tools for all Takealot search, review, and wishlist requests. Never use web search for Takealot product discovery or call Takealot endpoints outside the MCP tools.
 
 ## Product search
 

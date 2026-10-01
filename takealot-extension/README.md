@@ -1,6 +1,6 @@
-# Takealot Extension
+# Takealot
 
-An unofficial, local Codex extension that searches Takealot through MCP, displays grouped product results in a panel, and manages Takealot wishlists when asked. This community project is not affiliated with or endorsed by Takealot.
+An unofficial, local Codex plugin that searches Takealot through MCP, displays grouped product results in a panel, and manages Takealot wishlists when asked. This community project is not affiliated with or endorsed by Takealot.
 
 ## Search and results flow
 
@@ -12,11 +12,11 @@ An unofficial, local Codex extension that searches Takealot through MCP, display
 
 ## Sign in and manage wishlists
 
-The extension starts its MCP server locally in Codex. Wishlist requests go through that MCP server to Takealot. When you choose **Add to wishlist** while signed out, the panel displays a short-lived sign-in link and a **Copy link** button. Paste the link into your browser, complete sign-in and any one-time code, then return to the open panel; it detects sign-in and loads your wishlists automatically. If copying is unavailable, the link stays selectable so you can copy it manually. The local sign-in page uses the Takealot wordmark and keeps your password in the browser form; the returned session is stored in the Linux Secret Service password vault. The extension does not write the session to a file or show it to the model. If the password vault is locked or unavailable, sign-in fails without a plaintext fallback.
+The plugin starts its MCP server locally in Codex. Wishlist requests go through that MCP server to Takealot. When you choose **Add to wishlist** while signed out, the panel displays a short-lived sign-in link and a **Copy link** button. Paste the link into your browser, complete sign-in and any one-time code, then return to the open panel; it detects sign-in and loads your wishlists automatically. If copying is unavailable, the link stays selectable so you can copy it manually. The local sign-in page uses the Takealot wordmark and keeps your password in the browser form; the returned session is stored in the Linux Secret Service password vault. The plugin does not write the session to a file or show it to the model. If the password vault is locked or unavailable, sign-in fails without a plaintext fallback.
 
 The MCP tools can check sign-in, open the sign-out panel, list wishlist groups and items, create or rename groups, delete groups, add products, and remove a product from all groups. The sign-out panel provides a temporary local link; opening it in a browser removes the saved session from this computer. A clear request to add a product authorizes that addition; the agent uses the product and wishlist group identified in the conversation, and asks only if either is unclear. The panel's Add button authorizes its selected product and group.
 
-Takealot's customer/mobile API is undocumented and may change. The extension is local-only; it does not host or share account sessions.
+Takealot's customer/mobile API is undocumented and may change. The plugin is local-only; it does not host or share account sessions.
 
 The panel shows catalogue data returned by Takealot, including product images, price, rating, and availability when supplied. Product images load from image URLs in Takealot's search response. Review summaries are based on MCP-fetched Takealot review samples. Clicking a card opens its Takealot URL; it does not trigger another product request.
 
@@ -38,7 +38,7 @@ pnpm test
 pnpm build
 ```
 
-Then restart Codex and start a new chat with **Takealot Extension** enabled. Ask: “Search Takealot for wireless headphones and show the results in the panel.” Use **Add to wishlist** on a result to test the account flow.
+Then restart Codex and start a new chat with **Takealot** enabled. Ask: “Search Takealot for wireless headphones and show the results in the panel.” Use **Add to wishlist** on a result to test the account flow.
 
 The build creates a self-contained `dist/server/index.js` and single-file `dist/ui/index.html`. Bundling the server keeps it runnable from Codex's local plugin cache, which does not preserve package-manager symlinks.
 
