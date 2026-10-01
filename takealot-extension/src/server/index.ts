@@ -45,7 +45,7 @@ const resourceMetadata = {
     permissions: { clipboardWrite: {} },
   },
   "openai/ui": {
-    preferredDisplayMode: "fullscreen",
+    preferredDisplayMode: "inline",
     availableDisplayModes: ["inline", "fullscreen"],
   } satisfies OpenAIUiResourceMetadata,
 };
